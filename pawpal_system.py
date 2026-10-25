@@ -149,6 +149,7 @@ class Scheduler:
     """Builds and explains a daily care plan for an owner's pets."""
 
     def __init__(self, owner: Owner):
+        """Create a scheduler for the given owner with an empty plan."""
         self.owner = owner
         self.plan: list[Task] = []            # tasks chosen for today, in order
         self.skipped: list[Task] = []         # due today but didn't fit in the time

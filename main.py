@@ -34,6 +34,7 @@ def print_schedule(scheduler: Scheduler, today: date) -> None:
 
 
 def main() -> None:
+    """Build a sample owner with two pets and print today's schedule."""
     owner = Owner("Alan", available_minutes=90)
 
     mochi = Pet("Mochi", "dog", age=3)
