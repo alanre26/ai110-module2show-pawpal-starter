@@ -12,7 +12,11 @@ a user should be able to edit modify and delete all of them
 **a. Initial design**
 
 - Briefly describe your initial UML design.
+The inital design stems from class schedule and then followed by owner then pet and then task. pointing from the top down. all carry attributes.
+
 - What classes did you include, and what responsibilities did you assign to each?
+I included 4 classes, they are Scheduler, Owner, Pet, Task. For Scheduler a responbility given was fetch todays tasks, as well as sort by priority. For owner it has responbility of adding pets and setting available minutes. Pet class has responsiblities of completeing task and editing tasks. Task class has assigned priority, preferred time, completed or not, and frequency.
+
 
 **b. Design changes**
 
