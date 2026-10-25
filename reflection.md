@@ -22,6 +22,8 @@ I included 4 classes, they are Scheduler, Owner, Pet, Task. For Scheduler a resp
 
 - Did your design change during implementation?
 - If yes, describe at least one change and why you made it.
+Yes, one change im going to make is a task doesnt know which pet its assigned too, as well as AI help me uncover that task ids are ambigious. If i remove task_id=1 that can remove it for both pets with the same task.
+Another change needed is currently bool is set tp true forever if task is done, but for recurring tasks it should be set off again for owner to check it again for the next day 
 
 ---
 

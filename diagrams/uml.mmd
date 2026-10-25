@@ -4,11 +4,12 @@ classDiagram
     class Owner {
         +str name
         +int available_minutes
-        +dict preferences
         +list~Pet~ pets
+        -int _next_task_id
+        +new_task_id() int
         +add_pet(pet: Pet) None
         +remove_pet(pet_name: str) None
-        +get_pet(pet_name: str) Pet
+        +get_pet(pet_name: str) Pet | None
         +get_all_tasks() list~Task~
     }
 
@@ -28,23 +29,28 @@ classDiagram
         +str title
         +int duration_minutes
         +str priority
-        +str preferred_time
+        +str pet_name
+        +time preferred_time
         +str frequency
-        +bool completed
-        +mark_complete() None
+        +int day_of_week
+        +date last_completed
+        +mark_complete(today: date) None
         +mark_incomplete() None
-        +is_due_today(date) bool
-        +next_occurrence() date
+        +is_completed(today: date) bool
+        +is_due_today(today: date) bool
+        +next_occurrence(today: date) date | None
     }
 
     class Scheduler {
         +Owner owner
         +list~Task~ plan
-        +get_todays_tasks() list~Task~
+        +list~Task~ skipped
+        +dict reasons
+        +get_todays_tasks(today: date) list~Task~
         +sort_by_priority(tasks: list~Task~) list~Task~
         +sort_by_time(tasks: list~Task~) list~Task~
-        +detect_conflicts() list~str~
-        +generate_plan() list~Task~
+        +detect_conflicts(tasks: list~Task~) list~str~
+        +generate_plan(today: date) list~Task~
         +explain_plan() str
     }
 
