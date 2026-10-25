@@ -1,6 +1,13 @@
 # PawPal+ Project Reflection
 
 ## 1. System Design
+A user should be able to add a pet as well as multiple pets, their choice of pets 
+
+User should be able to scedule daily or weekly walks, for most dog walkers its around the same time everyday. in the morning and possibly noon 
+
+A user should be able to see a calendar view of todays task with time and be able to check off tasks.
+
+a user should be able to edit modify and delete all of them 
 
 **a. Initial design**
 
