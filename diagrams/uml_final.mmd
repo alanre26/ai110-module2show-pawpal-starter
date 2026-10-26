@@ -1,0 +1,74 @@
+classDiagram
+    %% Final design: matches pawpal_system.py
+
+    class Owner {
+        +str name
+        +int available_minutes
+        +list~Pet~ pets
+        -int _next_task_id
+        +new_task_id() int
+        +add_pet(pet: Pet) None
+        +remove_pet(pet_name: str) None
+        +get_pet(pet_name: str) Pet | None
+        +get_all_tasks() list~Task~
+    }
+
+    class Pet {
+        +str name
+        +str species
+        +int age
+        +list~Task~ tasks
+        +add_task(task: Task) None
+        +edit_task(task_id: int, **changes) None
+        +remove_task(task_id: int) None
+        +get_tasks() list~Task~
+        -_find_task(task_id: int) Task
+    }
+
+    class Task {
+        +int task_id
+        +str title
+        +int duration_minutes
+        +str priority
+        +str pet_name
+        +time | None preferred_time
+        +str frequency
+        +int | None day_of_week
+        +date | None last_completed
+        +date | None due_date
+        +mark_complete(today: date) None
+        +mark_incomplete() None
+        +is_completed(today: date) bool
+        +is_due_today(today: date) bool
+        +next_due_date(completed_on: date) date | None
+    }
+
+    class Scheduler {
+        +Owner owner
+        +list~Task~ plan
+        +list~Task~ skipped
+        +dict~int, str~ reasons
+        +get_todays_tasks(today: date) list~Task~
+        +sort_by_priority(tasks: list~Task~) list~Task~
+        +sort_by_time(tasks: list~Task~) list~Task~
+        +filter_tasks(today: date, pet_name: str | None, completed: bool | None) list~Task~
+        +complete_task(task_id: int, today: date) Task | None
+        +detect_conflicts(tasks: list~Task~) list~str~
+        +generate_plan(today: date) list~Task~
+        +explain_plan() str
+    }
+
+    class pawpal_system {
+        <<module>>
+        +dict PRIORITY_ORDER
+        +dict REPEAT_DAYS
+        -_minutes(t: time) int
+    }
+
+    Owner "1" *-- "*" Pet : owns
+    Pet "1" *-- "*" Task : has
+    Task ..> Pet : pet_name refers to
+    Scheduler --> Owner : plans for
+    Scheduler ..> Task : sorts, filters, completes, creates next copy
+    Scheduler ..> pawpal_system : uses PRIORITY_ORDER, _minutes
+    Task ..> pawpal_system : uses REPEAT_DAYS
