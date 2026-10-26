@@ -1,6 +1,6 @@
 """Temporary testing ground: build a sample owner and print today's schedule."""
 
-from datetime import date, time
+from datetime import date, time, timedelta
 
 from pawpal_system import Owner, Pet, Scheduler, Task
 
@@ -13,7 +13,8 @@ def print_task_list(heading: str, tasks: list[Task]) -> None:
     for task in tasks:
         when = f"{task.preferred_time:%H:%M}" if task.preferred_time else "Anytime"
         done = "done" if task.last_completed else "todo"
-        print(f"  {when:<8}{task.title:<15}{task.pet_name:<8}{task.priority:<8}{done}")
+        due = f"{task.due_date:%a %m/%d}" if task.due_date else "-"
+        print(f"  {when:<8}{task.title:<15}{task.pet_name:<8}{task.priority:<8}{done:<6}due {due}")
     print()
 
 
@@ -63,13 +64,16 @@ def main() -> None:
     mochi.add_task(Task(owner.new_task_id(), "Morning walk", 30, "high", preferred_time=time(7, 30)))
     mochi.add_task(Task(owner.new_task_id(), "Grooming", 45, "low", frequency="weekly",
                         day_of_week=date.today().weekday()))
+    # Two conflicts on purpose: Dinner and Litter box both at 18:00 (different pets),
+    # and Medication lands in the middle of Mochi's own noon walk (same pet).
     mochi.add_task(Task(owner.new_task_id(), "Dinner", 10, "high", preferred_time=time(18, 0)))
+    mochi.add_task(Task(owner.new_task_id(), "Medication", 5, "high", preferred_time=time(12, 10)))
 
     today = date.today()
     scheduler = Scheduler(owner)
 
-    # Pretend Luna's breakfast is already done so the status filters have something to show.
-    breakfast.mark_complete(today)
+    # Luna's breakfast is already done. It's daily, so this also adds tomorrow's copy.
+    scheduler.complete_task(breakfast.task_id, today)
 
     print_task_list("All tasks, in the order they were added", owner.get_all_tasks())
     print_task_list("All tasks, sorted by time", scheduler.sort_by_time(owner.get_all_tasks()))
@@ -80,6 +84,14 @@ def main() -> None:
 
     scheduler.generate_plan(today)
     print_schedule(scheduler, today)
+
+    print("\nRecurring tasks: completing a task adds its next copy")
+    for task in [t for t in scheduler.plan if t.title == "Morning walk"] + scheduler.skipped:
+        next_task = scheduler.complete_task(task.task_id, today)
+        print(f"  Done: {task.title} ({task.frequency}) -> next copy #{next_task.task_id} due {next_task.due_date:%a %m/%d}")
+    tomorrow = today + timedelta(days=1)
+    print(f"  Due tomorrow ({tomorrow:%a %m/%d}): "
+          + ", ".join(t.title for t in scheduler.sort_by_time(scheduler.get_todays_tasks(tomorrow))))
 
 
 if __name__ == "__main__":

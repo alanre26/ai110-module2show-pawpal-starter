@@ -1,11 +1,14 @@
 """PawPal+ logic layer: backend classes for owners, pets, tasks, and scheduling."""
 
-from dataclasses import dataclass, field, fields
+from dataclasses import dataclass, field, fields, replace
 from datetime import date, time, timedelta
 
 # Higher number = more important. Sort with this instead of the raw strings,
 # because alphabetically "high" < "low" < "medium".
 PRIORITY_ORDER = {"high": 3, "medium": 2, "low": 1}
+
+# How many days after completion the next copy of a repeating task is due.
+REPEAT_DAYS = {"daily": 1, "weekly": 7}
 
 
 def _minutes(t: time) -> int:
@@ -26,6 +29,7 @@ class Task:
     frequency: str = "daily"              # "daily", "weekly", or "once"
     day_of_week: int | None = None        # for weekly tasks: 0 = Monday ... 6 = Sunday
     last_completed: date | None = None    # date it was last checked off
+    due_date: date | None = None          # set on auto-created repeats; None = use frequency rules
 
     def mark_complete(self, today: date) -> None:
         """Record that this task was done on the given date."""
@@ -41,29 +45,20 @@ class Task:
 
     def is_due_today(self, today: date) -> bool:
         """Return True if this task should happen on the given date."""
-        if self.frequency == "daily":
-            return True
-        if self.frequency == "weekly":
-            # A weekly task with no day set is treated as due every day until done.
-            return self.day_of_week is None or today.weekday() == self.day_of_week
-        if self.frequency == "once":
-            return self.last_completed is None or self.last_completed == today
-        return False
+        # Each Task is one occurrence. Once it's done on an earlier day it's finished;
+        # for daily/weekly tasks, Scheduler.complete_task() adds the next copy.
+        if self.last_completed is not None and self.last_completed != today:
+            return False
+        if self.due_date is not None:
+            return self.due_date <= today     # overdue copies stay on the list until done
+        if self.frequency == "weekly" and self.day_of_week is not None:
+            return today.weekday() == self.day_of_week
+        return True
 
-    def next_occurrence(self, today: date) -> date | None:
-        """Return the next date this task is due, or None if it won't repeat."""
-        if self.frequency == "once":
-            return None if self.last_completed else today
-
-        start = today + timedelta(days=1) if self.is_completed(today) else today
-        if self.frequency == "daily":
-            return start
-        if self.frequency == "weekly":
-            if self.day_of_week is None:
-                return start
-            days_ahead = (self.day_of_week - start.weekday()) % 7
-            return start + timedelta(days=days_ahead)
-        return None
+    def next_due_date(self, completed_on: date) -> date | None:
+        """Return when the next copy is due after finishing on completed_on, or None if it doesn't repeat."""
+        days = REPEAT_DAYS.get(self.frequency)
+        return completed_on + timedelta(days=days) if days else None
 
 
 @dataclass
@@ -183,14 +178,36 @@ class Scheduler:
         self, today: date, pet_name: str | None = None, completed: bool | None = None
     ) -> list[Task]:
         """Return tasks matching the given pet and/or completion status; None means any."""
-        return [
-            task for task in self.owner.get_all_tasks()
-            if (pet_name is None or task.pet_name == pet_name)
-            and (completed is None or task.is_completed(today) == completed)
-        ]
+        # Narrow the list one filter at a time; skipping a filter keeps everything.
+        tasks = self.owner.get_all_tasks()
+        if pet_name is not None:
+            tasks = [t for t in tasks if t.pet_name == pet_name]
+        if completed is True:      # checked off today
+            tasks = [t for t in tasks if t.is_completed(today)]
+        elif completed is False:   # due today and still to do
+            tasks = [t for t in tasks if t.is_due_today(today) and not t.is_completed(today)]
+        return tasks
+
+    def complete_task(self, task_id: int, today: date) -> Task | None:
+        """Mark a task done; for daily/weekly tasks, add and return a new copy for the next due date."""
+        task = next((t for t in self.owner.get_all_tasks() if t.task_id == task_id), None)
+        if task is None:
+            raise ValueError(f"No task with id {task_id}")
+        if task.last_completed is not None:
+            return None                       # already done, so don't create a duplicate copy
+
+        task.mark_complete(today)
+        next_date = task.next_due_date(today)
+        if next_date is None:
+            return None
+        next_task = replace(task, task_id=self.owner.new_task_id(), last_completed=None, due_date=next_date)
+        self.owner.get_pet(task.pet_name).add_task(next_task)
+        return next_task
 
     def detect_conflicts(self, tasks: list[Task]) -> list[str]:
         """Return warnings for tasks whose time windows (start + duration) overlap."""
+        # Lightweight on purpose: never raises, just returns messages for the caller to show.
+        # Sorting first means we can stop scanning as soon as a later task starts after this one ends.
         timed = self.sort_by_time([t for t in tasks if t.preferred_time is not None])
         warnings = []
         for i, first in enumerate(timed):
@@ -198,9 +215,14 @@ class Scheduler:
             for second in timed[i + 1:]:
                 if _minutes(second.preferred_time) >= first_end:
                     break
+                who = f"{first.pet_name} is double-booked" if first.pet_name == second.pet_name else "Owner is double-booked"
+                if first.preferred_time == second.preferred_time:
+                    detail = f"both start at {first.preferred_time:%H:%M}"
+                else:
+                    detail = f"'{first.title}' runs until {first_end // 60:02d}:{first_end % 60:02d}"
                 warnings.append(
-                    f"'{first.title}' ({first.pet_name}) at {first.preferred_time:%H:%M} overlaps "
-                    f"'{second.title}' ({second.pet_name}) at {second.preferred_time:%H:%M}"
+                    f"{who}: '{first.title}' ({first.pet_name}) at {first.preferred_time:%H:%M} and "
+                    f"'{second.title}' ({second.pet_name}) at {second.preferred_time:%H:%M} - {detail}"
                 )
         return warnings
 

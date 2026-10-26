@@ -44,27 +44,33 @@ pip install -r requirements.txt
 
 ## 🖥️ Sample Output
 
-Output from running `python main.py`:
+Output from running `python main.py` (the schedule part):
 
 ```
 ============================================================
   Today's Schedule - Sunday, October 25, 2026
-  Owner: Alan  |  Time used: 80 of 90 min
+  Owner: Alan  |  Time used: 85 of 90 min
 ============================================================
   Time    Task              Pet       Length   Priority
   --------------------------------------------------------
   07:30   Morning walk      Mochi      30 min   high
-  07:45   Breakfast         Luna       10 min   high
   12:00   Noon walk         Mochi      20 min   medium
+  12:10   Medication        Mochi       5 min   high
+  18:00   Dinner            Mochi      10 min   high
   18:00   Litter box        Luna        5 min   medium
   Anytime Brushing          Luna       15 min   low
 
   Not scheduled:
-    - Grooming (Mochi): skipped: needs 45 min but only 10 min left
+    - Grooming (Mochi): skipped: needs 45 min but only 5 min left
 
   Warnings:
-    ! 'Morning walk' (Mochi) at 07:30 overlaps 'Breakfast' (Luna) at 07:45
+    ! Mochi is double-booked: 'Noon walk' (Mochi) at 12:00 and 'Medication' (Mochi) at 12:10 - 'Noon walk' runs until 12:20
+    ! Owner is double-booked: 'Dinner' (Mochi) at 18:00 and 'Litter box' (Luna) at 18:00 - both start at 18:00
 ============================================================
+
+Recurring tasks: completing a task adds its next copy
+  Done: Morning walk (daily) -> next copy #10 due Mon 10/26
+  Done: Grooming (weekly) -> next copy #11 due Sun 11/01
 ```
 
 ## 🧪 Testing PawPal+
@@ -80,19 +86,39 @@ pytest --cov
 Sample test output:
 
 ```
-# Paste your pytest output here
+.........                                                                [100%]
+9 passed in 0.01s
 ```
 
 ## 📐 Smarter Scheduling
 
-> Fill in once you've implemented scheduling logic.
+All of this lives in the `Scheduler` and `Task` classes in `pawpal_system.py`.
 
 | Feature | Method(s) | Notes |
 |---------|-----------|-------|
-| Task sorting | | e.g., by priority, duration |
-| Filtering | | e.g., skip tasks if time runs out |
-| Conflict handling | | e.g., overlapping time slots |
-| Recurring tasks | | e.g., daily vs. weekly |
+| Task sorting | `Scheduler.sort_by_time()`, `Scheduler.sort_by_priority()` | By time of day, "Anytime" last, priority breaks ties |
+| Filtering | `Scheduler.filter_tasks()`, `Scheduler.get_todays_tasks()` | By pet name and/or done vs. still to do |
+| Conflict handling | `Scheduler.detect_conflicts()` | Overlapping time windows, same pet or different pets |
+| Recurring tasks | `Scheduler.complete_task()`, `Task.next_due_date()`, `Task.is_due_today()` | Daily copy due +1 day, weekly copy due +7 days |
+
+### Sorting by time
+`Scheduler.sort_by_time(tasks)` uses `sorted()` with a lambda key that returns a tuple: `(has no time, preferred time, -priority)`. Python compares tuples left to right, so timed tasks come first in clock order, "Anytime" tasks go last, and two tasks at the same time are ordered high priority first. `Scheduler.sort_by_priority(tasks)` is used when building the plan (high first, shorter first on ties so more tasks fit).
+
+### Filtering by pet or status
+`Scheduler.filter_tasks(today, pet_name=None, completed=None)` narrows the task list one filter at a time. Leave an argument as `None` to skip that filter.
+- `pet_name="Mochi"` gives only Mochi's tasks
+- `completed=True` gives tasks checked off today
+- `completed=False` gives tasks due today that are still to do
+
+### Conflict detection
+`Scheduler.detect_conflicts(tasks)` sorts the timed tasks, then compares each task with the ones that start before it ends (start + duration). Because the list is sorted it can stop early instead of checking every pair. It never raises an error. It returns warning strings that say whether one pet is double-booked or the owner is (two different pets at once). Back-to-back tasks (08:00–08:30, then 08:30) are not a conflict. Tasks with no preferred time are not checked.
+
+### Recurring tasks
+Each `Task` object is one occurrence. `Scheduler.complete_task(task_id, today)` marks the task done, and if it's `daily` or `weekly` it creates a new copy for the next occurrence:
+- `Task.next_due_date()` uses `timedelta`: daily = `today + timedelta(days=1)`, weekly = `today + timedelta(days=7)`
+- the copy gets a new task ID, a `due_date`, and is added to the same pet
+- `once` tasks don't repeat, and completing a task twice doesn't create duplicates
+- `Task.is_due_today()` hides tasks finished on earlier days and shows copies once their `due_date` arrives (overdue copies stay on the list until done)
 
 ## 📸 Demo Walkthrough
 
