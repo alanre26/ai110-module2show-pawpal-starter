@@ -169,7 +169,25 @@ class Scheduler:
 
     def sort_by_time(self, tasks: list[Task]) -> list[Task]:
         """Return tasks ordered by preferred time; tasks with no time go last."""
-        return sorted(tasks, key=lambda t: (t.preferred_time is None, t.preferred_time or time.min))
+        # Key tuple: timed tasks first, then earliest time, then higher priority on ties.
+        return sorted(
+            tasks,
+            key=lambda t: (
+                t.preferred_time is None,
+                t.preferred_time or time.min,
+                -PRIORITY_ORDER.get(t.priority, 0),
+            ),
+        )
+
+    def filter_tasks(
+        self, today: date, pet_name: str | None = None, completed: bool | None = None
+    ) -> list[Task]:
+        """Return tasks matching the given pet and/or completion status; None means any."""
+        return [
+            task for task in self.owner.get_all_tasks()
+            if (pet_name is None or task.pet_name == pet_name)
+            and (completed is None or task.is_completed(today) == completed)
+        ]
 
     def detect_conflicts(self, tasks: list[Task]) -> list[str]:
         """Return warnings for tasks whose time windows (start + duration) overlap."""
