@@ -117,3 +117,79 @@ def test_back_to_back_tasks_are_not_a_conflict():
         Task(0, "Feeding", 10, preferred_time=time(8, 30)),
     )
     assert scheduler.detect_conflicts(scheduler.owner.get_all_tasks()) == []
+
+
+def test_owner_with_pet_but_no_tasks_gets_empty_plan():
+    """A pet with no tasks should give an empty plan and a friendly message, not an error."""
+    scheduler = make_scheduler()
+
+    assert scheduler.generate_plan(TODAY) == []
+    assert scheduler.detect_conflicts([]) == []
+    assert scheduler.explain_plan() == "No tasks are due today."
+
+
+def test_sort_by_time_breaks_same_time_ties_by_priority():
+    """Two tasks at the exact same time should list the higher-priority one first."""
+    scheduler = make_scheduler(
+        Task(0, "Brushing", 10, "low", preferred_time=time(9, 0)),
+        Task(0, "Medication", 5, "high", preferred_time=time(9, 0)),
+    )
+    titles = [t.title for t in scheduler.sort_by_time(scheduler.owner.get_all_tasks())]
+    assert titles == ["Medication", "Brushing"]
+
+
+def test_conflict_between_two_pets_blames_owner():
+    """Overlapping tasks for different pets mean the owner is double-booked."""
+    scheduler = make_scheduler(Task(0, "Walk", 30, preferred_time=time(8, 0)))
+    luna = Pet("Luna", "cat")
+    scheduler.owner.add_pet(luna)
+    luna.add_task(Task(scheduler.owner.new_task_id(), "Feeding", 10, preferred_time=time(8, 0)))
+
+    warnings = scheduler.detect_conflicts(scheduler.owner.get_all_tasks())
+
+    assert len(warnings) == 1
+    assert warnings[0].startswith("Owner is double-booked")
+
+
+def test_tasks_without_a_time_never_conflict():
+    """Anytime tasks have no fixed window, so they can't clash with anything."""
+    scheduler = make_scheduler(
+        Task(0, "Walk", 30, preferred_time=time(8, 0)),
+        Task(0, "Brushing", 15),
+        Task(0, "Play", 20),
+    )
+    assert scheduler.detect_conflicts(scheduler.owner.get_all_tasks()) == []
+
+
+def test_generate_plan_fits_high_priority_first_and_skips_the_rest():
+    """When time runs out, high-priority tasks are kept and lower ones are skipped."""
+    scheduler = make_scheduler(
+        Task(0, "Long play", 60, "low"),
+        Task(0, "Walk", 50, "high"),
+        Task(0, "Grooming", 50, "medium"),
+    )
+    scheduler.owner.available_minutes = 100
+
+    planned = [t.title for t in scheduler.generate_plan(TODAY)]
+
+    assert sorted(planned) == ["Grooming", "Walk"]
+    assert [t.title for t in scheduler.skipped] == ["Long play"]
+    assert "skipped" in scheduler.reasons[scheduler.skipped[0].task_id]
+
+
+def test_missed_repeat_copy_stays_due_until_done():
+    """A repeat copy that wasn't done on its due date should still show up later (overdue)."""
+    scheduler = make_scheduler(Task(0, "Walk", 30, frequency="daily"))
+    next_task = scheduler.complete_task(1, TODAY)
+
+    three_days_later = TODAY + timedelta(days=3)
+    assert next_task in scheduler.get_todays_tasks(three_days_later)
+
+
+def test_weekly_task_with_day_of_week_only_due_on_that_day():
+    """A weekly task pinned to a weekday should only appear on that weekday."""
+    scheduler = make_scheduler(
+        Task(0, "Bath", 30, frequency="weekly", day_of_week=TODAY.weekday())
+    )
+    assert len(scheduler.get_todays_tasks(TODAY)) == 1
+    assert scheduler.get_todays_tasks(TODAY + timedelta(days=1)) == []

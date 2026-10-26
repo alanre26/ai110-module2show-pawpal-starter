@@ -75,20 +75,38 @@ Recurring tasks: completing a task adds its next copy
 
 ## 🧪 Testing PawPal+
 
+Run the full test suite from the project folder (with the virtual environment activated):
+
 ```bash
-# Run the full test suite:
-pytest
-
-# Run with coverage:
-pytest --cov
+python -m pytest
 ```
 
-Sample test output:
+The tests in `tests/test_pawpal.py` cover the scheduling logic in `pawpal_system.py`:
+
+- **Sorting:** tasks come back in time order, "Anytime" tasks go last, and tasks at the same time are ordered high priority first.
+- **Recurring tasks:** completing a daily task creates a copy due the next day, and a weekly task creates one due in 7 days. One-off tasks don't repeat, completing a task twice doesn't make duplicates, and a missed copy stays on the list until it's done.
+- **Conflict detection:** same start times and overlapping time slots are flagged, for one pet or across two pets (owner double-booked). Back-to-back tasks and tasks with no set time are not flagged.
+- **Filtering:** tasks can be narrowed by pet name and by done vs. still to do.
+- **Planning:** when time runs out, high-priority tasks are kept and lower ones are skipped with a reason.
+- **Edge cases:** a pet with no tasks gets an empty plan and a "No tasks are due today." message instead of an error, and a weekly task set to a weekday only shows up on that day.
+
+Output of a successful test run:
 
 ```
-.........                                                                [100%]
-9 passed in 0.01s
+============================= test session starts ==============================
+platform darwin -- Python 3.14.7, pytest-9.1.1, pluggy-1.7.0
+rootdir: /Users/alanreyes/ai110-module2show-pawpal-starter
+plugins: anyio-4.15.1
+collected 16 items
+
+tests/test_pawpal.py ................                                    [100%]
+
+============================== 16 passed in 0.01s ==============================
 ```
+
+**Confidence Level: ⭐⭐⭐⭐ (4/5)**
+
+All 16 tests pass, covering the main scheduling behaviors and the edge cases that are most likely to break them. I'm not giving it 5 stars because the Streamlit UI in `app.py` isn't tested automatically, and a few inputs aren't checked yet, such as tasks that run past midnight or a task with an unknown priority.
 
 ## 📐 Smarter Scheduling
 
