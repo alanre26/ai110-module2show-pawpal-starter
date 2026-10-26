@@ -71,6 +71,20 @@ For recurring tasks the AI first said i should keep one task object and just tra
 - How did you evaluate or verify what the AI suggested?
 I ran main.py after every change and actually read the output to see if it made sense, like checking the 6pm tasks showed a conflict and that the weekly grooming came back 7 days later and not the next day. I also ran pytest to make sure the tests all passed.
 
+**c. AI Strategy**
+
+- Which AI coding assistant features were most effective for building your scheduler?
+Letting it read my actual files and run things itself. It would run pytest and main.py after making changes so i could see right away if something broke, and for the streamlit app it clicked through the UI in a test to make sure the new buttons worked. Asking it to explain code before i saved it helped too.
+
+- Give one example of an AI suggestion you rejected or modified to keep your system design clean.
+The itertools.combinations version of detect_conflicts. It was shorter but it checks every pair of tasks and was harder for me to follow, so i kept my version that sorts first and stops early.
+
+- How did using separate chat sessions for different phases help you stay organized?
+Each chat only had to deal with one thing, like testing or the UI, so the AI didnt get mixed up with older stuff and its answers stayed focused. It also made it easier for me to go back and find what was decided in each phase.
+
+- Summarize what you learned about being the "lead architect" when collaborating with powerful AI tools.
+The AI can write a lot of code fast but i still have to decide how the classes fit together and what the app should actually do. My job was more about saying what i wanted, checking what it gave me, and saying no when it didnt fit the design.
+
 ---
 
 ## 4. Testing and Verification
@@ -78,7 +92,7 @@ I ran main.py after every change and actually read the output to see if it made 
 **a. What you tested**
 
 - What behaviors did you test?
-Marking a task complete, adding a task to a pet, sorting tasks by time with the "anytime" ones at the end, filtering by pet and by done/not done, a daily task making a new copy for tomorrow, a weekly task making a copy for 7 days later, once tasks not repeating, completing the same task twice not making duplicates, overlapping tasks giving a warning, and back to back tasks (8:00-8:30 then 8:30) NOT giving a warning.
+Marking a task complete, adding a task to a pet, sorting tasks by time with the "anytime" ones at the end, filtering by pet and by done/not done, a daily task making a new copy for tomorrow, a weekly task making a copy for 7 days later, once tasks not repeating, completing the same task twice not making duplicates, overlapping tasks giving a warning, and back to back tasks (8:00-8:30 then 8:30) NOT giving a warning. Later i added edge cases too, like a pet with no tasks, two tasks at the exact same time, two different pets clashing, and a task that got missed staying on the list until its done.
 
 - Why were these tests important?
 These are the parts a owner would actually depend on. If recurring tasks are wrong the owner either forgets to feed their pet or sees the same task twice. The back to back test was important because its an easy off by one mistake and i didnt want fake warnings all over the schedule.
@@ -86,7 +100,7 @@ These are the parts a owner would actually depend on. If recurring tasks are wro
 **b. Confidence**
 
 - How confident are you that your scheduler works correctly?
-Pretty confident, like a 4 out of 5. All 9 tests pass and the demo output looks right, but the tests only cover the cases i thought of.
+Pretty confident, like a 4 out of 5. All 16 tests pass and the demo output looks right, but the tests only cover the cases i thought of and the streamlit app isnt tested automatically.
 
 - What edge cases would you test next if you had more time?
 A task that goes past midnight (like 11:45pm for 30 min), what happens if you undo a completed task since the next copy still exists, old copies piling up if the owner doesnt check things off for a while, and a owner with 0 minutes free.
@@ -103,7 +117,7 @@ I like the conflict warnings and how the schedule prints out in the terminal. It
 **b. What you would improve**
 
 - If you had another iteration, what would you improve or redesign?
-I would make the scheduler actually move tasks into open time slots instead of just warning about them, and put "anytime" tasks into gaps in the day. I would also add a check off button in the streamlit app so you can complete tasks there and not just in main.py.
+I would make the scheduler actually move tasks into open time slots instead of just warning about them, and put "anytime" tasks into gaps in the day. I would also save the pets and tasks to a file so they dont disappear when the streamlit app restarts.
 
 **c. Key takeaway**
 

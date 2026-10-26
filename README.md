@@ -22,6 +22,14 @@ Your final app should:
 - Display the plan clearly (and ideally explain the reasoning)
 - Include tests for the most important scheduling behaviors
 
+## ✨ Features
+
+- **Sorting by time:** tasks show up in clock order, "Anytime" tasks go last, and if two tasks are at the same time the higher priority one goes first.
+- **Priority-based planning:** the daily plan fits high priority tasks first into the minutes you have free, and tells you why each task was picked or skipped.
+- **Filtering:** see tasks for one pet, or only what's done / still to do today.
+- **Daily and weekly recurrence:** marking a daily task done makes a new copy for tomorrow, and a weekly task comes back in 7 days. One-time tasks don't repeat.
+- **Conflict warnings:** if two tasks overlap, you get a warning saying whether one pet is double-booked or you (the owner) are.
+
 ## Getting started
 
 ### Setup
@@ -41,37 +49,6 @@ pip install -r requirements.txt
 5. Add tests to verify key behaviors.
 6. Connect your logic to the Streamlit UI in `app.py`.
 7. Refine UML so it matches what you actually built.
-
-## 🖥️ Sample Output
-
-Output from running `python main.py` (the schedule part):
-
-```
-============================================================
-  Today's Schedule - Sunday, October 25, 2026
-  Owner: Alan  |  Time used: 85 of 90 min
-============================================================
-  Time    Task              Pet       Length   Priority
-  --------------------------------------------------------
-  07:30   Morning walk      Mochi      30 min   high
-  12:00   Noon walk         Mochi      20 min   medium
-  12:10   Medication        Mochi       5 min   high
-  18:00   Dinner            Mochi      10 min   high
-  18:00   Litter box        Luna        5 min   medium
-  Anytime Brushing          Luna       15 min   low
-
-  Not scheduled:
-    - Grooming (Mochi): skipped: needs 45 min but only 5 min left
-
-  Warnings:
-    ! Mochi is double-booked: 'Noon walk' (Mochi) at 12:00 and 'Medication' (Mochi) at 12:10 - 'Noon walk' runs until 12:20
-    ! Owner is double-booked: 'Dinner' (Mochi) at 18:00 and 'Litter box' (Luna) at 18:00 - both start at 18:00
-============================================================
-
-Recurring tasks: completing a task adds its next copy
-  Done: Morning walk (daily) -> next copy #10 due Mon 10/26
-  Done: Grooming (weekly) -> next copy #11 due Sun 11/01
-```
 
 ## 🧪 Testing PawPal+
 
@@ -140,12 +117,52 @@ Each `Task` object is one occurrence. `Scheduler.complete_task(task_id, today)` 
 
 ## 📸 Demo Walkthrough
 
-Describe your app in numbered steps so a reader can follow along without watching a video:
+Run the app with `streamlit run app.py`.
 
-1. <!-- Describe this step -->
-2. <!-- Describe this step -->
-3. <!-- Describe this step -->
-4. <!-- Describe this step -->
-5. <!-- Add more steps as needed -->
+**What you can do in the app**
 
-**Screenshot or video** *(optional)*: <!-- Insert a screenshot or link to a demo video here -->
+1. **Owner:** enter your name and how many minutes you have free today.
+2. **Pets:** add a pet with a name, species, and age. Adding two pets with the same name gives an error.
+3. **Tasks:** add a task for a pet with a title, duration, priority, optional preferred time, and how often it repeats (daily, weekly on a certain day, or once).
+4. **Task list:** tasks are sorted by time. You can filter by pet or by "To do today" / "Done today", and the Status column shows what's done and when repeat copies are due next.
+5. **Mark done:** pick a task and click "Mark done". If it repeats, a message tells you when the next one is due.
+6. **Today's Schedule:** click "Generate schedule" to see the plan in time order with a "Why" column. Conflicts show up as a yellow warning at the top, and tasks that didn't fit are listed at the bottom.
+
+**Example workflow**
+
+1. Set your free time to 90 minutes and add two pets, Mochi (dog) and Luna (cat).
+2. Give Mochi a daily "Morning walk" at 07:30 and "Dinner" at 18:00, and give Luna "Litter box" at 18:00.
+3. Click "Generate schedule". The walk shows up first, and you get a warning that you're double-booked at 18:00 (Mochi's dinner and Luna's litter box).
+4. Mark "Morning walk" done. The app says the next one is due tomorrow, and the task list shows the new copy.
+
+**Sample CLI output**
+
+`python main.py` runs the same logic in the terminal with sample pets and tasks:
+
+```
+============================================================
+  Today's Schedule - Sunday, October 25, 2026
+  Owner: Alan  |  Time used: 85 of 90 min
+============================================================
+  Time    Task              Pet       Length   Priority
+  --------------------------------------------------------
+  07:30   Morning walk      Mochi      30 min   high
+  12:00   Noon walk         Mochi      20 min   medium
+  12:10   Medication        Mochi       5 min   high
+  18:00   Dinner            Mochi      10 min   high
+  18:00   Litter box        Luna        5 min   medium
+  Anytime Brushing          Luna       15 min   low
+
+  Not scheduled:
+    - Grooming (Mochi): skipped: needs 45 min but only 5 min left
+
+  Warnings:
+    ! Mochi is double-booked: 'Noon walk' (Mochi) at 12:00 and 'Medication' (Mochi) at 12:10 - 'Noon walk' runs until 12:20
+    ! Owner is double-booked: 'Dinner' (Mochi) at 18:00 and 'Litter box' (Luna) at 18:00 - both start at 18:00
+============================================================
+
+Recurring tasks: completing a task adds its next copy
+  Done: Morning walk (daily) -> next copy #10 due Mon 10/26
+  Done: Grooming (weekly) -> next copy #11 due Sun 11/01
+  Due tomorrow (Mon 10/26): Morning walk, Breakfast, Noon walk, Medication, Dinner, Litter box, Brushing
+```
